@@ -1,220 +1,160 @@
 ﻿using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
-using Microsoft.Xna.Framework.Input;
-using System;
 using System.Collections.Generic;
-using System.Linq;
-using Camera2D = Whirlybird.Camera.Camera;
-using Whirlybird.Platforms;
+using System.ComponentModel;
+using System.Resources;
 using Whirlybird.Camera;
 using Whirlybird.Components;
+using Whirlybird.Components.Leaderboard;
+using Whirlybird.Localization;
+using Whirlybird.PlayerSettings;
+using Whirlybird.ScreenManaging;
 using Whirlybird.Screens;
 
 namespace Whirlybird
 {
     public class WhirlybirdGame : Game
     {
+        public SpriteBatch SpriteBatch { get; private set; }
+        public Camera2D Camera { get; private set; }
+        public CustomMouse CustomMouse { get; set; }
+        public Leaderboard Leaderboard { get; private set; }
+        public Player Player { get; private set; }
+
+        public SpriteFont CommonFont { get; private set; }
+        public SpriteFont HeaderFont { get; private set; }
+        public SpriteFont NumberFont { get; private set; }
+        public SpriteFont FancyFont { get; private set; }
+        public Texture2D CoinTexture { get; private set; }
+
+        public int ScreenWidth { get; private set; }
+        public int ScreenHeight { get; private set; }
+
         GraphicsDeviceManager graphics;
-        SpriteBatch _spriteBatch;
         ResolutionIndependentRenderer _resolutionIndependence;
-        Camera2D _camera;
+        ScreenManager screenManager;
 
+        // screens
         DeathScreen deathScreen;
-
-        Texture2D birdSprite;
-        Texture2D platformSprite;
-        SpriteFont constantiaFont;
-
-        public float cameraLine;
-        public float deathLine;
-
-        Bird bird;
-        List<Platform> platforms;
-        Score score;
-
-        MouseState mState;
-
-        const float TIMETICK = 0.016666667F;
+        GameplayScreen gameplayScreen;
+        LeaderboardScreen leaderBoardScreen;
+        MenuScreen menuScreen;
+        ShopScreen shopScreen;
+        SettingsScreen settingsScreen;
 
         public WhirlybirdGame()
         {
-            cameraLine = 100;
-            graphics = new GraphicsDeviceManager(this);
-            Content.RootDirectory = "Content";
-            IsMouseVisible = true;
-            platforms = new List<Platform>();
-            _resolutionIndependence = new ResolutionIndependentRenderer(this);
+            Player = new Player();
 
+            graphics = new GraphicsDeviceManager(this);
+            _resolutionIndependence = new ResolutionIndependentRenderer(this);
+            Camera = new Camera2D(_resolutionIndependence);
+            Camera.Zoom = 1f;
+            Content.RootDirectory = "Content";
+            Player = new Player();
+
+            var displayMode = GraphicsAdapter.DefaultAdapter.CurrentDisplayMode;
+            ScreenWidth = displayMode.Width;
+            ScreenHeight = displayMode.Height;
+
+
+            graphics.PreferredBackBufferWidth = ScreenWidth;
+            graphics.PreferredBackBufferHeight = ScreenHeight;
+            
             graphics.IsFullScreen = true;
-            graphics.PreferredBackBufferWidth = 1366;
-            graphics.PreferredBackBufferHeight = 768;
+            IsMouseVisible = false;
         }
 
         protected override void Initialize()
         {
-            _camera = new Camera2D(_resolutionIndependence);
-            _camera.Zoom = 0.8f;
-            _camera.Position = new Vector2(_resolutionIndependence.VirtualWidth / 2, _resolutionIndependence.VirtualHeight / 2);
-            deathLine = 768;
+            ResourceManager englishResources = new ResourceManager("Whirlybird.Localization.Strings", typeof(WhirlybirdGame).Assembly);
+            ResourceManager ukrainianResources = new ResourceManager("Whirlybird.Localization.StringsUa", typeof(WhirlybirdGame).Assembly);
+            ResourceManager spanishResources = new ResourceManager("Whirlybird.Localization.StringsEs", typeof(WhirlybirdGame).Assembly);
+
+            LocalizationManager.AddResourceManager("en", englishResources);
+            LocalizationManager.AddResourceManager("ua", ukrainianResources);
+            LocalizationManager.AddResourceManager("es", spanishResources);
+
+
+            LocalizationManager.SetCulture(Player.Preferences.LanguageCode);
+
+            SpriteBatch = new SpriteBatch(GraphicsDevice);
+            Leaderboard = new Leaderboard("Leaderboard.bin");
+            CustomMouse = new CustomMouse(this, SpriteBatch, GraphicsDevice);
+            Leaderboard.LoadData();
 
             InitializeResolutionIndependence();
-
-            _spriteBatch = new SpriteBatch(GraphicsDevice);
-            score = new Score(0, new Vector2(200, 100));
-            bird = new Bird(this, _spriteBatch, "bird");
-
-            bird.Initialize();
-            deathScreen = new DeathScreen(this);
             base.Initialize();
         }
 
         protected override void LoadContent()
         {
-            platformSprite = Content.Load<Texture2D>("platform");
-            constantiaFont = Content.Load<SpriteFont>("constantia");
-            deathScreen.LoadContent();
+            CommonFont = Content.Load<SpriteFont>("fonts\\constantia");
+            NumberFont = Content.Load<SpriteFont>("fonts\\numbers");
+            FancyFont = Content.Load<SpriteFont>("fonts\\wonderland");
+            HeaderFont = Content.Load<SpriteFont>("fonts\\alice-header");
 
-            platforms.Add(new Platform(new Rectangle(100, 450, 60, 20)));
-            platforms.Add(new Platform(new Rectangle(450, 150, 60, 20)));
+            CoinTexture = Content.Load<Texture2D>("other\\coin");
+            InitializeScreens();
         }
 
         protected override void Update(GameTime gameTime)
         {
-            if (deathScreen.IsActive)
-            {
-                deathScreen.Update(gameTime);
-                return;
-            }
-
-            if (isObjectOutOfScreen(bird.Position))
-            {
-                deathScreen.ScreenState = ScreenState.Active;
-                //Exit();
-            }
-
-            var difference = bird.Position.Y + bird.Height - cameraLine;
-            if (difference < -0.1)
-            {
-                UpdatePositions(difference);
-            }
-
-
-            if (GamePad.GetState(PlayerIndex.One).Buttons.Back == ButtonState.Pressed || Keyboard.GetState().IsKeyDown(Keys.Escape))
-                Exit();
-            mState = Mouse.GetState();
-            bird.Velocity = new Vector2(mState.Position.X - bird.Position.X, bird.Velocity.Y);
-            if (bird.Position.Y >= deathLine - bird.Height)
-            {
-                bird.Bounce();
-            }
-
-            var collidingPlatforms = platforms.Where(p => p.IsColliding(bird));
-            if (collidingPlatforms.Count() > 0 && bird.Velocity.Y > 0)
-            {
-                bird.Bounce();
-            }
-
-            GeneratePlatforms();
-
-            bird.Update(gameTime);
+            screenManager.Update(gameTime);
+            LocalizationManager.Update();
             base.Update(gameTime);
         }
 
         protected override void Draw(GameTime gameTime)
         {
-            GraphicsDevice.Clear(Color.Wheat);
-            _spriteBatch.Begin(transformMatrix: _camera.GetViewTransformationMatrix());
+            GraphicsDevice.Clear(Player.Preferences.MainColor);
+            SpriteBatch.Begin(transformMatrix: Camera.GetViewTransformationMatrix());
+            _resolutionIndependence.BeginDraw();
 
-            if (deathScreen.IsActive)
-            {
-                deathScreen.Draw(gameTime, _spriteBatch);
-            }
-            else
-            {
-                _resolutionIndependence.BeginDraw();
+            screenManager.Draw(gameTime);
 
-                _spriteBatch.DrawString(constantiaFont, score.Value.ToString(), score.Position, Color.Black);
-                DisplayDebug();
-                foreach (var platform in platforms)
-                {
-                    _spriteBatch.Draw(platformSprite, new Vector2(platform.Position.X, platform.Position.Y), Color.White);
-                }
-
-                bird.Draw(gameTime);
-            }
-
-            _spriteBatch.End();
+            SpriteBatch.End();
             base.Draw(gameTime);
         }
 
+
+
+        #region Private methods
         private void InitializeResolutionIndependence()
         {
-            _resolutionIndependence.VirtualWidth = 1366;
-            _resolutionIndependence.VirtualHeight = 768;
-            _resolutionIndependence.ScreenWidth = 1366;
-            _resolutionIndependence.ScreenHeight = 768;
+            _resolutionIndependence.VirtualWidth = ScreenWidth;
+            _resolutionIndependence.VirtualHeight = ScreenHeight;
+            _resolutionIndependence.ScreenWidth = ScreenWidth;
+            _resolutionIndependence.ScreenHeight = ScreenHeight;
             _resolutionIndependence.Initialize();
 
-            _camera.RecalculateTransformationMatrices();
+            Camera.RecalculateTransformationMatrices();
         }
 
-        private float CalculateHeightPosition(float height)
+        private void InitializeScreens()
         {
-            return height - cameraLine + 100;
-        }
+            var score = new Score(0, new Vector2());
+            deathScreen = new DeathScreen(this, score);
+            gameplayScreen = new GameplayScreen(this, score);
+            leaderBoardScreen = new LeaderboardScreen(this);
+            menuScreen = new MenuScreen(this);
+            shopScreen = new ShopScreen(this);
+            settingsScreen = new SettingsScreen(this);
 
-        private void UpdatePositions(float difference)
-        {
-            cameraLine += difference;
-            var pl = platforms.Where(p => p.Position.Y - cameraLine > 1000);
-            platforms.RemoveAll(p => p.Position.Y - cameraLine > 1000);
-
-            _camera.Position = new Vector2(_resolutionIndependence.VirtualWidth / 2, _resolutionIndependence.VirtualHeight / 2 + cameraLine - 100);
-            score.Value = -cameraLine + 100;
-            score.Position = new Vector2(score.Position.X, score.Position.Y + difference);
-        }
-
-        private bool isObjectOutOfScreen(Vector2 position)
-        {
-            return position.Y > _resolutionIndependence.VirtualHeight + cameraLine - 100;
-        }
-
-        public void Restart()
-        {
-            cameraLine = 100;
-            _camera.Position = new Vector2(_resolutionIndependence.VirtualWidth / 2, _resolutionIndependence.VirtualHeight / 2);
-            platforms.Clear();
-            Initialize();
-        }
-
-        public void GeneratePlatforms()
-        {
-            if (platforms.Count >= 1000 || platforms.Count <= 0)
+            var screens = new List<GameScreen>
             {
-                return;
-            }
+                deathScreen,
+                gameplayScreen,
+                leaderBoardScreen,
+                menuScreen,
+                shopScreen,
+                settingsScreen,
+            };
+            menuScreen.ScreenState = ScreenState.Focus;
 
-            Random rnd = new Random();
-
-            var minY = platforms.Select(p => p.Position.Y).Min();
-            var centerX = platforms.Where(p => p.Position.Y == minY).Select(p => p.Position.X).Max();
-
-            var Y = rnd.Next((int)minY - 300, (int)minY - 100);
-            var X = rnd.Next((int)centerX / 2, (1366 - (int)centerX) / 2);
-
-            platforms.Add(new Platform(new Rectangle(X, Y, 60, 20)));
+            screenManager = new ScreenManager(this, screens);
+            screenManager.Initialize();
         }
-
-        private void DisplayDebug()
-        {
-            _spriteBatch.DrawString(constantiaFont, "bird: " + bird.Position.ToString(), new Vector2(60, 120), Color.Black);
-            _spriteBatch.DrawString(constantiaFont, "mouse: " + mState.Position.ToString(), new Vector2(90, 500), Color.Black);
-            //_spriteBatch.DrawString(constantiaFont, platforms.Count.ToString(),
-            //    new Vector2(score.Position.X, score.Position.Y + 50), 
-            //    Color.Black);
-            _spriteBatch.DrawString(constantiaFont, platforms.Select(p => p.Position.Y).Min().ToString(),
-                new Vector2(score.Position.X, score.Position.Y + 100),
-                Color.Black);
-        }
+        #endregion
     }
 }

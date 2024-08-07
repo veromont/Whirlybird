@@ -1,9 +1,10 @@
 ﻿using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
+using Whirlybird.PlayerSettings;
 
 namespace Whirlybird.Camera
 {
-    class ResolutionIndependentRenderer
+    public class ResolutionIndependentRenderer
     {
         readonly Game _game;
         Viewport _viewport;
@@ -21,7 +22,7 @@ namespace Whirlybird.Camera
 
             ScreenWidth = 1024;
             ScreenHeight = 768;
-            BackgroundColor = Color.Wheat;
+            BackgroundColor = Player.Preferences.MainColor;
         }
 
         public int VirtualHeight { get; set; }
