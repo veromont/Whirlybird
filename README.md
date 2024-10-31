@@ -10,3 +10,4 @@ My version includes following features🔥:<br />
 To play game click on this link:<br />
 https://drive.google.com/drive/folders/1Hve3xeBhgbyxq_sukZDDHqd4xYWJt9lK?usp=drive_link<br />
 Download the archive, extract it where you want and launch whirlybird.exe.<br />
+You can also look at screenshots in screenshots folder on github.
