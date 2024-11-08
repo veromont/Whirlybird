@@ -1,5 +1,5 @@
-Whirlybird -the game
-My friends and I liked playing Whirlybird from Google Play. The original game itself is similar to the more famous doodle jump, but the gameplay is different, it's more dynamic and i think controls feel better.
+Whirlybird -the game<br />
+My friends and I liked playing Whirlybird from Google Play. The original game itself is similar to the more famous doodle jump, but the gameplay is different, it's more dynamic and i think controls feel better.<br />
 My version includes following features🔥:<br />
  - power-ups💪
  - coins as ingame currency🪙
