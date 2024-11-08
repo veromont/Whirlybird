@@ -6,6 +6,7 @@ My version includes following features🔥:<br />
  - skins💅
  - both normal mod and hard mode, which is more rewarding, but way more difficult💀
  - local leaderboard for normal and hard mod🏆
+ - 3 languages, you can choose Ukrainian, English or Spanish🌐
 
 To play game click on this link:<br />
 https://drive.google.com/drive/folders/1Hve3xeBhgbyxq_sukZDDHqd4xYWJt9lK?usp=drive_link<br />
